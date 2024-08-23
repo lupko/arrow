@@ -1866,6 +1866,9 @@ cdef class ServerCallContext(_Weakrefable):
             return TracingServerMiddleware(trace_context)
         return None
 
+    def try_cancel(self):
+        self.context.TryCancel()
+
     @staticmethod
     cdef ServerCallContext wrap(const CServerCallContext& context):
         cdef ServerCallContext result = \

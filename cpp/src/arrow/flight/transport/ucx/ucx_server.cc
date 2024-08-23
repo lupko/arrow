@@ -80,6 +80,7 @@ class UcxServerCallContext : public flight::ServerCallContext {
   }
   bool is_cancelled() const override { return false; }
   const CallHeaders& incoming_headers() const override { return incoming_headers_; }
+  void TryCancel() const override {}
 
  private:
   std::string peer_;

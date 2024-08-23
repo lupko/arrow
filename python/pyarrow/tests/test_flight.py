@@ -17,6 +17,8 @@
 
 import ast
 import base64
+from concurrent.futures import ThreadPoolExecutor
+
 import itertools
 import os
 import pathlib
@@ -2394,3 +2396,49 @@ def test_headers_trailers():
         assert ("x-header-bin", b"header\x01value") in factory.headers
         assert ("x-trailer", "trailer-value") in factory.headers
         assert ("x-trailer-bin", b"trailer\x01value") in factory.headers
+
+
+def test_try_cancel_on_do_put():
+    class TryCancelFlightServer(FlightServerBase):
+        pending_put = threading.Event()
+        pending_put_context = None
+        put_completed = threading.Event()
+        was_cancelled = False
+
+        def do_put(self, context, descriptor, reader, writer):
+            self.pending_put_context = context
+            self.pending_put.set()
+
+            reader.read_all()
+            self.was_cancelled = context.is_cancelled()
+            self.pending_put_context = None
+            self.put_completed.set()
+
+    schema = pa.schema([pa.field("col", pa.int32())])
+
+    with TryCancelFlightServer() as server, \
+            FlightClient(("localhost", server.port)) as client, ThreadPoolExecutor() as tpe:
+
+        # initiate do_put
+        writer, _ = client.do_put(flight.FlightDescriptor.for_path(""), schema)
+
+        # wait until it starts on the server & then some more to give
+        # server time to reach the blocking read_all()
+        server.pending_put.wait()
+        time.sleep(0.5)
+
+        # for test purposes, the server exposes server call context of the
+        # do_put - try to cancel it now
+        server.pending_put_context.try_cancel()
+
+        assert server.put_completed.wait(1.0) is True
+        assert server.was_cancelled is True
+
+        # attempting to write data after the call was cancelled by server fails
+        # with appropriate error
+        with pytest.raises(flight.FlightCancelledError):
+            writer.write_table(pa.table(data={"col": [1, 2, 3]}, schema=schema))
+
+        # and so does the close
+        with pytest.raises(flight.FlightCancelledError):
+            writer.close()

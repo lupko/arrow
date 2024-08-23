@@ -262,6 +262,7 @@ cdef extern from "arrow/flight/api.h" namespace "arrow" nogil:
         void AddHeader(const c_string& key, const c_string& value)
         void AddTrailer(const c_string& key, const c_string& value)
         CServerMiddleware* GetMiddleware(const c_string& key)
+        void TryCancel()
 
     cdef cppclass CTimeoutDuration" arrow::flight::TimeoutDuration":
         CTimeoutDuration(double)

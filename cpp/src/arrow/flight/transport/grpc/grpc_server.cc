@@ -160,6 +160,10 @@ class GrpcServerCallContext : public ServerCallContext {
     return instance->second.get();
   }
 
+  void TryCancel() const override {
+    context_->TryCancel();
+  }
+
  private:
   friend class GrpcServiceHandler;
   ServerContext* context_;

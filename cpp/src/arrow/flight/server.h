@@ -139,6 +139,8 @@ class ARROW_FLIGHT_EXPORT ServerCallContext {
   virtual bool is_cancelled() const = 0;
   /// \brief The headers sent by the client for this call.
   virtual const CallHeaders& incoming_headers() const = 0;
+  /// \brief Try to cancel the call.
+  virtual void TryCancel() const = 0;
 };
 
 class ARROW_FLIGHT_EXPORT FlightServerOptions {
